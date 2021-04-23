@@ -1,0 +1,36 @@
+The setup.sql that is currently present creates the database and then adds the data each time.
+
+To perform just the seeding, we can create a new sql file called seeding.sql that does not create the database, but just runs the load commands to populate the database.
+
+So I copied the load commands from the setup.sql file and put them in the seeding.sql file. 
+
+To make sure that no error messages are raised when inserting rows that already exist, I used the IGNORE keyword in the load statements. Doing so will cause only new rows to be added and existing rows will be skipped.
+
+I added the newly created seeding.sql into the Dockerfile so that it is initialized when the database container is created. The command added in the Dockerfile is the following:
+
+COPY ./seeding.sql /docker-entrypoint-initdb.d/seeding.sql
+
+We created a new yaml file called db-migration.yaml.
+
+Since the yaml file is based on the Django site, we put the image as “nyuappsec/assign3:v0” instead of the database’s image.
+
+We can use the following command to execute the python script.
+Command: [“python3”, “manage.py”, “migrate”]
+
+We now copy the db-migration.yaml and create a new file called db-seeding.yaml
+
+This yaml file runs on the database container, not on the Django container.
+
+To run the seeding.sql statement from a Kubernetes job, we need to open a shell and then pass the command that we want to execute as an argument. We can achieve this using the following commands:
+
+Command: [“/bin/sh/”, “-c”]
+
+Args: [“mysql --user=root --password=${MYSQL_ROOT_PASWORD} --database=${MYSQL_DATABASE} --host=mysql-service -f < /docker-entrypoint-initdb.d/seeding.sql”] 
+
+To access the password, database and host which are variables, we need to use ${MYSQL_ROOT_PASSWORD}, ${MYSQL_DATABASE} and ${MYSQL_HOST} in the command we use to run the seeding.sql from the shell.
+
+We now apply the yaml files using the commands below to have the corresponding Kubernete Jobs created
+
+Kubectl apply -f db-migration.yaml
+Kubectl apply -f db-seeding.yaml
+
