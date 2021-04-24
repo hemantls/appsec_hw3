@@ -6,18 +6,18 @@ So I copied the load commands from the setup.sql file and put them in the seedin
 
 To make sure that no error messages are raised when inserting rows that already exist, I used the IGNORE keyword in the load statements. Doing so will cause only new rows to be added and existing rows will be skipped.
 
-I added the newly created seeding.sql into the Dockerfile so that it is initialized when the database container is created. The command added in the Dockerfile is the following:
+Since we will be performing DB migration on the Django container, the DB Dockerfile does not have to include setup.sql. So I edited it out.
 
-COPY ./seeding.sql /docker-entrypoint-initdb.d/seeding.sql
+The seeding.sql that is newly created also does not run when the DB container is created, because seeding should happen only after the migration Job is done on the Django container. So seeding.sql also does not need to be included in the DB Dockerfile.
 
-We created a new yaml file called db-migration.yaml.
+We created the Kubernetes job to perform migrations as a new yaml file called db-migration.yaml. By putting “kind: Job”, we can tell Kubernetes that this yaml file will be creating a Job.
 
 Since the yaml file is based on the Django site, we put the image as “nyuappsec/assign3:v0” instead of the database’s image.
 
-We can use the following command to execute the python script.
+We can use the following command to execute the python script in db-migrations.yaml.
 Command: [“python3”, “manage.py”, “migrate”]
 
-We now copy the db-migration.yaml and create a new file called db-seeding.yaml
+We now create a new file called db-seeding.yaml
 
 This yaml file runs on the database container, not on the Django container.
 
@@ -25,7 +25,7 @@ To run the seeding.sql statement from a Kubernetes job, we need to open a shell 
 
 Command: [“/bin/sh/”, “-c”]
 
-Args: [“mysql --user=root --password=${MYSQL_ROOT_PASWORD} --database=${MYSQL_DATABASE} --host=mysql-service -f < /docker-entrypoint-initdb.d/seeding.sql”] 
+Args: [“mysql --user=root --password=${MYSQL_ROOT_PASWORD} --database=${MYSQL_DATABASE} --host=${MYSQL_HOST} -f < /docker-entrypoint-initdb.d/seeding.sql”] 
 
 To access the password, database and host which are variables, we need to use ${MYSQL_ROOT_PASSWORD}, ${MYSQL_DATABASE} and ${MYSQL_HOST} in the command we use to run the seeding.sql from the shell.
 
@@ -33,4 +33,8 @@ We now apply the yaml files using the commands below to have the corresponding K
 
 Kubectl apply -f db-migration.yaml
 Kubectl apply -f db-seeding.yaml
+
+To get everything to work after the migration and seeding jobs were set up, I had to delete all the pods and then remove the persistent volume.
+
+After this, when the containers and pods were recreated, the migration completed successfully.
 
