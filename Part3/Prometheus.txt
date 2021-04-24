@@ -1,0 +1,36 @@
+In views.py, I noticed that the password was being printed out in one of the Prometheus monitoring statements.
+
+“The total number of times {pword} was used”
+
+This will reveal the passwords and hence, is an insecure monitoring statement. So I removed it.
+
+I also added the database_error_return_404 as an additional monitoring parameter.
+
+Wherever a 404 error was being printed out in views.py, I incremented this parameter.
+
+I installed Prometheus by first installing Helm and then following the installation directions online.
+
+After installation, I was able to confirm that Prometheus was installed and running by using the “kubectl get pods” command.
+
+This showed that the five different pods by Prometheus were shown as “Running”.
+
+To find the location of the Prometheus configuration, I used the following command.
+
+Kubectl get configmap
+
+This showed two configmaps “prometheus-server” and “prometheus-alertmanager”.
+
+I edited the “prometheus-server” using the command
+
+Kubectl edit configmap prometheus-server
+
+For Prometheus to connect to the gift card site that is accessed via the proxy, we need to change the configuration of “static_configs: targets:” from the localhost at port 9090 to “proxy-service:8080”.
+
+To run Prometheus, use the command
+
+Kubectl port-forward deployment/prometheus-server 9090:9090
+
+Now, we can open up a Chrome browser window and go to “localhost:9090” to see the Prometheus monitoring service running.
+
+It allows us to access the value of the counters that we have created in the views.py file. 
+
